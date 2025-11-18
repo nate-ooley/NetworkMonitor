@@ -6,14 +6,60 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		C025790C2ECB86BC002044DB /* NetworkMonitor.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = C02579072ECB86BC002044DB /* NetworkMonitor.xcdatamodeld */; };
+		C025790D2ECB86BC002044DB /* NetworkMonitorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C02579082ECB86BC002044DB /* NetworkMonitorApp.swift */; };
+		C025790E2ECB86BC002044DB /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = C02579092ECB86BC002044DB /* Persistence.swift */; };
+		C025790F2ECB86BC002044DB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C02579052ECB86BC002044DB /* Assets.xcassets */; };
+		C02579122ECB8916002044DB /* DeviceType.swift in Sources */ = {isa = PBXBuildFile; fileRef = C02579102ECB890D002044DB /* DeviceType.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
+		C02579052ECB86BC002044DB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		C02579082ECB86BC002044DB /* NetworkMonitorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitorApp.swift; sourceTree = "<group>"; };
+		C02579092ECB86BC002044DB /* Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence.swift; sourceTree = "<group>"; };
+		C025790A2ECB86BC002044DB /* NetworkMonitor.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = NetworkMonitor.xcdatamodel; sourceTree = "<group>"; };
+		C02579102ECB890D002044DB /* DeviceType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceType.swift; sourceTree = "<group>"; };
 		C032F9282ECB82D3006F86C3 /* NetworkMonitor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NetworkMonitor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		C02579262ECB8ED7002044DB /* Exceptions for "ViewModels" folder in "NetworkMonitor" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				NetworkCanvasViewModel.swift,
+			);
+			target = C032F9272ECB82D3006F86C3 /* NetworkMonitor */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		C032F92A2ECB82D3006F86C3 /* NetworkMonitor */ = {
+		C02579142ECB898E002044DB /* Models */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = NetworkMonitor;
+			path = Models;
+			sourceTree = "<group>";
+		};
+		C02579152ECB89A8002044DB /* Views */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Views;
+			sourceTree = "<group>";
+		};
+		C02579162ECB89B2002044DB /* ViewModels */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C02579262ECB8ED7002044DB /* Exceptions for "ViewModels" folder in "NetworkMonitor" target */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		C02579172ECB89F9002044DB /* Utilities */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		C02579182ECB8A06002044DB /* Services */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Services;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -29,10 +75,27 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		C02579132ECB894B002044DB /* NetworkMonitorApp */ = {
+			isa = PBXGroup;
+			children = (
+				C02579082ECB86BC002044DB /* NetworkMonitorApp.swift */,
+				C02579102ECB890D002044DB /* DeviceType.swift */,
+				C02579072ECB86BC002044DB /* NetworkMonitor.xcdatamodeld */,
+				C02579092ECB86BC002044DB /* Persistence.swift */,
+				C02579052ECB86BC002044DB /* Assets.xcassets */,
+				C02579182ECB8A06002044DB /* Services */,
+				C02579172ECB89F9002044DB /* Utilities */,
+				C02579162ECB89B2002044DB /* ViewModels */,
+				C02579152ECB89A8002044DB /* Views */,
+				C02579142ECB898E002044DB /* Models */,
+			);
+			path = NetworkMonitorApp;
+			sourceTree = "<group>";
+		};
 		C032F91F2ECB82D3006F86C3 = {
 			isa = PBXGroup;
 			children = (
-				C032F92A2ECB82D3006F86C3 /* NetworkMonitor */,
+				C02579132ECB894B002044DB /* NetworkMonitorApp */,
 				C032F9292ECB82D3006F86C3 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -59,9 +122,6 @@
 			buildRules = (
 			);
 			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				C032F92A2ECB82D3006F86C3 /* NetworkMonitor */,
 			);
 			name = NetworkMonitor;
 			packageProductDependencies = (
@@ -109,6 +169,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C025790F2ECB86BC002044DB /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -119,6 +180,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C025790C2ECB86BC002044DB /* NetworkMonitor.xcdatamodeld in Sources */,
+				C025790D2ECB86BC002044DB /* NetworkMonitorApp.swift in Sources */,
+				C025790E2ECB86BC002044DB /* Persistence.swift in Sources */,
+				C02579122ECB8916002044DB /* DeviceType.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -252,10 +317,21 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_APP_SANDBOX = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -282,10 +358,21 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_APP_SANDBOX = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -325,6 +412,19 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCVersionGroup section */
+		C02579072ECB86BC002044DB /* NetworkMonitor.xcdatamodeld */ = {
+			isa = XCVersionGroup;
+			children = (
+				C025790A2ECB86BC002044DB /* NetworkMonitor.xcdatamodel */,
+			);
+			currentVersion = C025790A2ECB86BC002044DB /* NetworkMonitor.xcdatamodel */;
+			path = NetworkMonitor.xcdatamodeld;
+			sourceTree = "<group>";
+			versionGroupType = wrapper.xcdatamodel;
+		};
+/* End XCVersionGroup section */
 	};
 	rootObject = C032F9202ECB82D3006F86C3 /* Project object */;
 }
