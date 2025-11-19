@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>com.example.MyApp</string>
+	<key>CFBundleName</key>
+	<string>MyApp</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>This app uses the local network to discover and connect to devices and services on your LAN.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_http._tcp.</string>
+		<string>_ipp._tcp.</string>
+		<string>_raop._tcp.</string>
+		<string>_airplay._tcp.</string>
+		<string>_workstation._tcp.</string>
+	</array>
+</dict>
+</plist>
