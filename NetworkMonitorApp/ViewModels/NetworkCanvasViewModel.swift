@@ -7,9 +7,11 @@ class NetworkCanvasViewModel: ObservableObject {
     @Published var devicesOnCanvas: [NetworkDevice] = []
     @Published var connections: [NetworkConnection] = []
     @Published var isScanning: Bool = false
+    @Published var selectedDevice: NetworkDevice? = nil
     
-    private let discoveryEngine = NetworkDiscoveryEngine()
+    private let discoveryService = DeviceDiscoveryService()
     private var cancellables = Set<AnyCancellable>()
+    private var deviceIdByKey: [String: UUID] = [:]
     
     init() {
         setupBindings()
@@ -17,21 +19,41 @@ class NetworkCanvasViewModel: ObservableObject {
     }
     
     private func setupBindings() {
-        discoveryEngine.$discoveredDevices
+        discoveryService.$devices
+            .map { [weak self] devices -> [NetworkDevice] in
+                guard let self else { return devices.map { NetworkDevice(name: $0.name) } }
+                var seenKeys = Set<String>()
+                return devices.compactMap { d in
+                    let key = "\(d.name)|\(d.type)|\(d.domain)"
+                    // Skip exact duplicates by key
+                    guard seenKeys.insert(key).inserted else { return nil }
+                    // Reuse a stable UUID per key so SwiftUI doesn't treat updates as new rows
+                    let id: UUID
+                    if let existing = self.deviceIdByKey[key] {
+                        id = existing
+                    } else {
+                        let newId = UUID()
+                        self.deviceIdByKey[key] = newId
+                        id = newId
+                    }
+                    return NetworkDevice(id: id, name: d.name)
+                }
+            }
             .receive(on: DispatchQueue.main)
             .assign(to: &$discoveredDevices)
         
-        discoveryEngine.$isScanning
+        discoveryService.$isBrowsing
             .receive(on: DispatchQueue.main)
             .assign(to: &$isScanning)
     }
     
     func startDiscovery() {
-        discoveryEngine.startDiscovery()
+        discoveryService.startBrowsing()
     }
     
     func refreshDevices() {
-        discoveryEngine.refreshDevices()
+        discoveryService.stopBrowsing()
+        discoveryService.startBrowsing()
     }
     
     func addDeviceToCanvas(_ device: NetworkDevice, at position: CGPoint? = nil) {
@@ -79,6 +101,37 @@ class NetworkCanvasViewModel: ObservableObject {
         )
         connections.append(connection)
     }
+    
+    // Selection helpers
+    func selectDevice(_ device: NetworkDevice) {
+        selectedDevice = device
+    }
+    
+    func clearSelection() {
+        selectedDevice = nil
+    }
+    
+    // Map a canvas device back to rich discovery details, if available
+    func details(for device: NetworkDevice) -> DeviceDetails {
+        if let match = discoveryService.devices.first(where: { $0.name == device.name }) {
+            return DeviceDetails(
+                name: match.name,
+                type: match.type,
+                domain: match.domain,
+                hostName: match.hostName,
+                port: match.port,
+                addresses: match.addresses
+            )
+        }
+        return DeviceDetails(
+            name: device.name,
+            type: "Unknown",
+            domain: "local.",
+            hostName: nil,
+            port: nil,
+            addresses: []
+        )
+    }
 }
 
 
@@ -88,4 +141,5 @@ class NetworkCanvasViewModel: ObservableObject {
 //
 //  Created by Nathan Ooley on 11/17/25.
 //
+
 

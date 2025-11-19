@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 // View Modifier for Retro Mac styling
 struct RetroMacStyle: ViewModifier {

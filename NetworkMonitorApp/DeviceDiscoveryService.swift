@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import Network
 
 final class DiscoveredDevice: Identifiable, Hashable {
@@ -6,17 +7,27 @@ final class DiscoveredDevice: Identifiable, Hashable {
     let name: String
     let type: String
     let domain: String
-    let hostName: String?
-    let port: Int?
-    let addresses: [String]
+    var hostName: String?
+    var port: Int?
+    var addresses: [String]
+    var txtRecords: [String: String]
+    var macAddress: String?
+    var vendor: String?
+    var displayName: String
+    var retroIconName: String
 
-    init(name: String, type: String, domain: String, hostName: String?, port: Int?, addresses: [String]) {
+    init(name: String, type: String, domain: String, hostName: String?, port: Int?, addresses: [String], txtRecords: [String: String] = [:], macAddress: String? = nil, vendor: String? = nil, displayName: String? = nil, retroIconName: String? = nil) {
         self.name = name
         self.type = type
         self.domain = domain
         self.hostName = hostName
         self.port = port
         self.addresses = addresses
+        self.txtRecords = txtRecords
+        self.macAddress = macAddress
+        self.vendor = vendor
+        self.displayName = displayName ?? name
+        self.retroIconName = retroIconName ?? "RetroUnknown"
     }
 
     static func == (lhs: DiscoveredDevice, rhs: DiscoveredDevice) -> Bool {
@@ -30,113 +41,396 @@ final class DiscoveredDevice: Identifiable, Hashable {
     }
 }
 
-@MainActor
 final class DeviceDiscoveryService: NSObject, ObservableObject {
     @Published private(set) var devices: [DiscoveredDevice] = []
     @Published private(set) var isBrowsing: Bool = false
+    @Published private(set) var discoveredServiceTypes: Set<String> = []
 
-    private var browsers: [NetServiceBrowser] = []
-    private var services: Set<NetService> = []
+    // Cached ARP map: ip -> mac
+    private var arpCache: [String: String] = [:]
 
-    // Common Bonjour service types to look for
-    private let serviceTypes: [String] = [
-        "_http._tcp.",
-        "_https._tcp.",
-        "_ssh._tcp.",
-        "_airplay._tcp.",
-        "_ipp._tcp.",
-        "_printer._tcp.",
-        "_ftp._tcp.",
-        "_smb._tcp.",
-        "_afpovertcp._tcp.",
-        "_rfb._tcp.",
-    ]
+    // Meta-browser for discovering available service types on the LAN
+    private var typeBrowser: NetServiceBrowser?
+    // Per-type service browsers
+    private var serviceBrowsers: [String: NetServiceBrowser] = [:]
+    // Track active NetService objects so we can resolve/update
+    private var services: [String: NetService] = [:] // key: name|type|domain
+
+    private var fallbackBrowseTimer: Timer?
+
+    private func key(for service: NetService) -> String {
+        return "\(service.name)|\(service.type)|\(service.domain)"
+    }
 
     func startBrowsing() {
         guard !isBrowsing else { return }
         isBrowsing = true
         devices.removeAll()
+        discoveredServiceTypes.removeAll()
         services.removeAll()
-        browsers.removeAll()
+        serviceBrowsers.values.forEach { $0.stop() }
+        serviceBrowsers.removeAll()
 
-        for type in serviceTypes {
-            let browser = NetServiceBrowser()
-            browser.delegate = self
-            browsers.append(browser)
-            browser.searchForServices(ofType: type, inDomain: "local.")
+        // Start meta-browsing for service types
+        let tb = NetServiceBrowser()
+        tb.delegate = self
+        typeBrowser = tb
+        tb.searchForServices(ofType: "_services._dns-sd._udp.", inDomain: "local.")
+
+        // Fallback: if meta-browsing doesn't reveal types soon, try common ones
+        fallbackBrowseTimer?.invalidate()
+        fallbackBrowseTimer = Timer.scheduledTimer(withTimeInterval: 4.0, repeats: false) { [weak self] _ in
+            guard let self else { return }
+            if self.discoveredServiceTypes.isEmpty {
+                let commonTypes = [
+                    "_http._tcp.",
+                    "_https._tcp.",
+                    "_ipp._tcp.",
+                    "_printer._tcp.",
+                    "_raop._tcp.",
+                    "_airplay._tcp.",
+                    "_workstation._tcp.",
+                    "_smb._tcp.",
+                    "_afpovertcp._tcp.",
+                    "_ssh._tcp.",
+                    "_sftp-ssh._tcp.",
+                    "_rfb._tcp.",
+                    "_ftp._tcp."
+                ]
+                commonTypes.forEach { self.startBrowsing(type: $0) }
+            }
         }
     }
 
     func stopBrowsing() {
-        for browser in browsers {
-            browser.stop()
-        }
-        browsers.removeAll()
+        typeBrowser?.stop()
+        typeBrowser = nil
+        fallbackBrowseTimer?.invalidate()
+        fallbackBrowseTimer = nil
+        serviceBrowsers.values.forEach { $0.stop() }
+        serviceBrowsers.removeAll()
         services.removeAll()
         isBrowsing = false
     }
-}
 
-extension DeviceDiscoveryService: NetServiceBrowserDelegate {
-    func netServiceBrowser(_ browser: NetServiceBrowser, didFind service: NetService, moreComing: Bool) {
-        services.insert(service)
-        service.delegate = self
-        service.resolve(withTimeout: 5.0)
+    private func startBrowsing(type: String) {
+        guard serviceBrowsers[type] == nil else { return }
+        let browser = NetServiceBrowser()
+        browser.delegate = self
+        serviceBrowsers[type] = browser
+        browser.searchForServices(ofType: type, inDomain: "local.")
     }
 
-    func netServiceBrowser(_ browser: NetServiceBrowser, didRemove service: NetService, moreComing: Bool) {
-        services.remove(service)
-        // Remove matching device by name/type/domain
-        devices.removeAll { $0.name == service.name && $0.type == service.type && $0.domain == service.domain }
-    }
+    private func upsertDevice(from service: NetService, addresses: [String]? = nil, txtRecords: [String: String]? = nil, macAddress: String? = nil, vendor: String? = nil) {
+        let host = service.hostName
+        let port = (service.port == -1) ? nil : service.port
+        let incomingAddrs = addresses ?? []
 
-    func netServiceBrowserDidStopSearch(_ browser: NetServiceBrowser) { }
-    func netServiceBrowser(_ browser: NetServiceBrowser, didNotSearch errorDict: [String : NSNumber]) { }
-}
-
-extension DeviceDiscoveryService: NetServiceDelegate {
-    func netServiceDidResolveAddress(_ sender: NetService) {
-        let addresses = (sender.addresses ?? []).compactMap { data -> String? in
-            data.withUnsafeBytes { (rawPtr: UnsafeRawBufferPointer) -> String? in
-                guard let base = rawPtr.baseAddress else { return nil }
-                let addr = base.assumingMemoryBound(to: sockaddr.self)
-                if addr.pointee.sa_family == sa_family_t(AF_INET) {
-                    var addr4 = addr.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { $0.pointee }
-                    var buffer = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))
-                    let ptr = withUnsafePointer(to: &addr4.sin_addr) {
-                        inet_ntop(AF_INET, $0, &buffer, socklen_t(INET_ADDRSTRLEN))
-                    }
-                    if ptr != nil { return String(cString: buffer) }
-                } else if addr.pointee.sa_family == sa_family_t(AF_INET6) {
-                    var addr6 = addr.withMemoryRebound(to: sockaddr_in6.self, capacity: 1) { $0.pointee }
-                    var buffer = [CChar](repeating: 0, count: Int(INET6_ADDRSTRLEN))
-                    let ptr = withUnsafePointer(to: &addr6.sin6_addr) {
-                        inet_ntop(AF_INET6, $0, &buffer, socklen_t(INET6_ADDRSTRLEN))
-                    }
-                    if ptr != nil { return String(cString: buffer) }
-                }
-                return nil
-            }
-        }
-
-        let device = DiscoveredDevice(
-            name: sender.name,
-            type: sender.type,
-            domain: sender.domain,
-            hostName: sender.hostName,
-            port: sender.port == -1 ? nil : sender.port,
-            addresses: addresses
-        )
-
-        // Deduplicate by identity (name/type/domain)
-        if let idx = devices.firstIndex(where: { $0.name == device.name && $0.type == device.type && $0.domain == device.domain }) {
-            devices[idx] = device
+        let keyMatch: (DiscoveredDevice) -> Bool = { $0.name == service.name && $0.type == service.type && $0.domain == service.domain }
+        if let idx = devices.firstIndex(where: keyMatch) {
+            var existing = devices[idx]
+            // Merge/override fields
+            if !incomingAddrs.isEmpty { existing.addresses = incomingAddrs }
+            if let tr = txtRecords { existing.txtRecords = tr }
+            if let mac = macAddress { existing.macAddress = mac }
+            if let ven = vendor { existing.vendor = ven }
+            existing.hostName = host
+            existing.port = port
+            // Re-classify using current info
+            let classification = classifyDevice(
+                name: existing.name,
+                type: existing.type,
+                hostName: existing.hostName,
+                port: existing.port,
+                addresses: existing.addresses,
+                txtRecords: existing.txtRecords,
+                macAddress: existing.macAddress,
+                vendor: existing.vendor
+            )
+            existing.displayName = classification.displayName
+            existing.retroIconName = classification.icon
+            devices[idx] = existing
         } else {
+            let tr = txtRecords ?? [:]
+            let classification = classifyDevice(
+                name: service.name,
+                type: service.type,
+                hostName: host,
+                port: port,
+                addresses: incomingAddrs,
+                txtRecords: tr,
+                macAddress: macAddress,
+                vendor: vendor
+            )
+            let device = DiscoveredDevice(
+                name: service.name,
+                type: service.type,
+                domain: service.domain,
+                hostName: host,
+                port: port,
+                addresses: incomingAddrs,
+                txtRecords: tr,
+                macAddress: macAddress,
+                vendor: vendor,
+                displayName: classification.displayName,
+                retroIconName: classification.icon
+            )
             devices.append(device)
         }
     }
 
-    func netService(_ sender: NetService, didNotResolve errorDict: [String : NSNumber]) {
-        // Could log or handle errors; ignore for now.
+    private func classifyDevice(
+        name: String,
+        type: String,
+        hostName: String?,
+        port: Int?,
+        addresses: [String],
+        txtRecords: [String: String],
+        macAddress: String?,
+        vendor: String?
+    ) -> (displayName: String, icon: String) {
+        let lowerName = name.lowercased()
+        let lowerHost = hostName?.lowercased() ?? ""
+        let lowerType = type.lowercased()
+        let vendorLower = vendor?.lowercased() ?? ""
+        let model = (txtRecords["md"] ?? txtRecords["model"] ?? txtRecords["ty"] ?? txtRecords["fn"] ?? "").trimmingCharacters(in: .whitespaces)
+
+        // Prefer explicit friendly names from TXT records
+        if let fn = txtRecords["fn"], !fn.isEmpty {
+            return (fn, guessRetroIcon(type: lowerType, vendorLower: vendorLower, nameLower: lowerName, model: model))
+        }
+
+        // Printers (IPP/LPR)
+        if lowerType.contains("_ipp._tcp") || lowerType.contains("_printer._tcp") || (txtRecords["ty"]?.isEmpty == false) {
+            let base = model.isEmpty ? "Printer" : model
+            return (vendor.map { "\($0) \(base)" } ?? base, "RetroPrinter")
+        }
+
+        // AirPlay / RAOP
+        if lowerType.contains("_airplay._tcp") || lowerType.contains("_raop._tcp") {
+            let base = model.isEmpty ? "AirPlay Device" : model
+            return (base, "RetroSpeaker")
+        }
+
+        // Workstations / Macs
+        if lowerType.contains("_workstation._tcp") || lowerName.contains("mac") || lowerHost.contains("mac") || vendorLower.contains("apple") {
+            // Try to infer portable vs desktop from name
+            if lowerName.contains("book") || lowerName.contains("mbp") { return (model.isEmpty ? "Macintosh" : model, "RetroMac") }
+            return (model.isEmpty ? "Macintosh" : model, "RetroMac")
+        }
+
+        // File servers / NAS
+        if lowerType.contains("_smb._tcp") || lowerType.contains("_afpovertcp._tcp") {
+            if vendorLower.contains("synology") || vendorLower.contains("qnap") || vendorLower.contains("western digital") {
+                return (model.isEmpty ? "NAS" : model, "RetroDisk")
+            }
+            return (model.isEmpty ? "File Server" : model, "RetroDisk")
+        }
+
+        // SSH-only devices: often routers/switches/servers
+        if lowerType.contains("_ssh._tcp") || lowerType.contains("_sftp-ssh._tcp") {
+            if vendorLower.contains("cisco") || lowerName.contains("router") || lowerHost.contains("router") {
+                return ("Router", "RetroRouter")
+            }
+            return ("Server", "RetroServer")
+        }
+
+        // VNC
+        if lowerType.contains("_rfb._tcp") {
+            return ("VNC Server", "RetroMac")
+        }
+
+        // Cameras (common http services with camera keywords)
+        if lowerType.contains("_http._tcp") {
+            if lowerName.contains("cam") || lowerHost.contains("cam") || vendorLower.contains("hikvision") || vendorLower.contains("arlo") || vendorLower.contains("wyze") {
+                return (model.isEmpty ? "IP Camera" : model, "RetroCamera")
+            }
+        }
+
+        // Fallbacks by vendor
+        if vendorLower.contains("apple") { return (model.isEmpty ? "Apple Device" : model, "RetroMac") }
+        if vendorLower.contains("hp") || vendorLower.contains("hewlett") || vendorLower.contains("canon") || vendorLower.contains("brother") || vendorLower.contains("epson") { return (model.isEmpty ? "Printer" : model, "RetroPrinter") }
+        if vendorLower.contains("ubiquiti") || vendorLower.contains("tp-link") || vendorLower.contains("netgear") || vendorLower.contains("cisco") { return ("Router", "RetroRouter") }
+
+        // Last resort: use service type (without dots) as label
+        let cleanedType = type.replacingOccurrences(of: ".", with: "").replacingOccurrences(of: "_", with: "")
+        let label = cleanedType.isEmpty ? name : cleanedType
+        return (label, guessRetroIcon(type: lowerType, vendorLower: vendorLower, nameLower: lowerName, model: model))
+    }
+
+    private func guessRetroIcon(type: String, vendorLower: String, nameLower: String, model: String) -> String {
+        if type.contains("_printer._tcp") || type.contains("_ipp._tcp") { return "RetroPrinter" }
+        if type.contains("_airplay._tcp") || type.contains("_raop._tcp") { return "RetroSpeaker" }
+        if type.contains("_workstation._tcp") { return "RetroMac" }
+        if type.contains("_smb._tcp") || type.contains("_afpovertcp._tcp") { return "RetroDisk" }
+        if type.contains("_ssh._tcp") || type.contains("_sftp-ssh._tcp") { return "RetroServer" }
+        if type.contains("_rfb._tcp") { return "RetroMac" }
+        if type.contains("_http._tcp") && (nameLower.contains("cam") || vendorLower.contains("hikvision") || vendorLower.contains("arlo") || vendorLower.contains("wyze")) { return "RetroCamera" }
+        if vendorLower.contains("apple") { return "RetroMac" }
+        if vendorLower.contains("cisco") || vendorLower.contains("ubiquiti") || vendorLower.contains("netgear") || vendorLower.contains("tp-link") { return "RetroRouter" }
+        return "RetroUnknown"
     }
 }
+
+extension DeviceDiscoveryService: NetServiceBrowserDelegate {
+    // Called when meta-browsing finds a service (which, for _services._dns-sd._udp., represents a service TYPE)
+    func netServiceBrowser(_ browser: NetServiceBrowser, didFind service: NetService, moreComing: Bool) {
+        print("[Browser] didFind: name=\(service.name) type=\(service.type) domain=\(service.domain) moreComing=\(moreComing))")
+        if service.type == "_services._dns-sd._udp." {
+            // Service name encodes the actual service type. Bonjour returns names like _http._tcp
+            let serviceTypeName = service.name + "." // append trailing dot to match ofType format
+            discoveredServiceTypes.insert(serviceTypeName)
+            startBrowsing(type: serviceTypeName)
+            fallbackBrowseTimer?.invalidate()
+            fallbackBrowseTimer = nil
+        } else {
+            // This is a real browser returning an actual service instance
+            services[key(for: service)] = service
+            service.delegate = self
+            // Show early (name/type), addresses will fill after resolve
+            upsertDevice(from: service, addresses: [], txtRecords: nil, macAddress: nil, vendor: nil)
+            service.resolve(withTimeout: 10.0)
+        }
+    }
+
+    func netServiceBrowser(_ browser: NetServiceBrowser, didRemove service: NetService, moreComing: Bool) {
+        print("[Browser] didRemove: name=\(service.name) type=\(service.type) domain=\(service.domain) moreComing=\(moreComing))")
+        if service.type == "_services._dns-sd._udp." {
+            let typeToRemove = service.name + "."
+            discoveredServiceTypes.remove(typeToRemove)
+            if let b = serviceBrowsers.removeValue(forKey: typeToRemove) {
+                b.stop()
+            }
+        } else {
+            services.removeValue(forKey: key(for: service))
+            devices.removeAll { $0.name == service.name && $0.type == service.type && $0.domain == service.domain }
+        }
+    }
+
+    func netServiceBrowserDidStopSearch(_ browser: NetServiceBrowser) {
+        print("[Browser] didStopSearch")
+    }
+    func netServiceBrowser(_ browser: NetServiceBrowser, didNotSearch errorDict: [String : NSNumber]) {
+        print("[Browser] didNotSearch error=\(errorDict)")
+    }
+}
+
+extension DeviceDiscoveryService: NetServiceDelegate {
+    func netServiceDidResolveAddress(_ sender: NetService) {
+        print("[Service] didResolve: name=\(sender.name) type=\(sender.type) domain=\(sender.domain) host=\(sender.hostName ?? "nil") port=\(sender.port)")
+        let rawAddresses = sender.addresses ?? []
+        let strings: [String] = rawAddresses.compactMap { data -> String? in
+            return data.withUnsafeBytes { (rawPtr: UnsafeRawBufferPointer) -> String? in
+                guard let base = rawPtr.baseAddress else { return nil }
+                let addr = base.assumingMemoryBound(to: sockaddr.self)
+                switch Int32(addr.pointee.sa_family) {
+                case AF_INET:
+                    var a = addr.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { $0.pointee }
+                    var buffer = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))
+                    let ptr = withUnsafeBytes(of: &a.sin_addr) { raw -> UnsafePointer<in_addr> in
+                        raw.baseAddress!.assumingMemoryBound(to: in_addr.self)
+                    }
+                    guard inet_ntop(AF_INET, ptr, &buffer, socklen_t(INET_ADDRSTRLEN)) != nil else { return nil }
+                    return String(cString: buffer)
+                case AF_INET6:
+                    var a6 = addr.withMemoryRebound(to: sockaddr_in6.self, capacity: 1) { $0.pointee }
+                    var buffer = [CChar](repeating: 0, count: Int(INET6_ADDRSTRLEN))
+                    let ptr6 = withUnsafeBytes(of: &a6.sin6_addr) { raw -> UnsafePointer<in6_addr> in
+                        raw.baseAddress!.assumingMemoryBound(to: in6_addr.self)
+                    }
+                    guard inet_ntop(AF_INET6, ptr6, &buffer, socklen_t(INET6_ADDRSTRLEN)) != nil else { return nil }
+                    var ip = String(cString: buffer)
+                    // If link-local (fe80::/10), append scope id if present
+                    let isLinkLocal: Bool = withUnsafeBytes(of: a6.sin6_addr) { raw -> Bool in
+                        let bytes = raw.bindMemory(to: UInt8.self)
+                        guard bytes.count >= 2 else { return false }
+                        // fe80::/10 => first byte 0xFE, next byte upper 6 bits 0b10xxxx (0x80..0xBF)
+                        let b0 = bytes[0]
+                        let b1 = bytes[1]
+                        return b0 == 0xFE && (b1 & 0xC0) == 0x80
+                    }
+                    if isLinkLocal, a6.sin6_scope_id != 0 {
+                        ip += "%\(a6.sin6_scope_id)"
+                    }
+                    return ip
+                default:
+                    return nil
+                }
+            }
+        }
+        // Deduplicate while preserving order
+        var seen = Set<String>()
+        let deduped = strings.filter { seen.insert($0).inserted }
+
+        // Parse TXT records if available
+        var txt: [String: String] = [:]
+        if let data = sender.txtRecordData() {
+            let dict = NetService.dictionary(fromTXTRecord: data)
+            txt = dict.reduce(into: [:]) { acc, kv in
+                let key = kv.key
+                let valueString = String(data: kv.value, encoding: .utf8) ?? ""
+                acc[key] = valueString
+            }
+        }
+        // Upsert with addresses and TXT
+        upsertDevice(from: sender, addresses: deduped, txtRecords: txt, macAddress: nil, vendor: nil)
+        // Attempt ARP correlation for MAC/vendor
+        correlateMACAndVendor(for: sender, addresses: deduped)
+    }
+
+    func netService(_ sender: NetService, didNotResolve errorDict: [String : NSNumber]) {
+        print("[Service] didNotResolve: name=\(sender.name) type=\(sender.type) domain=\(sender.domain) error=\(errorDict)")
+    }
+
+    func netService(_ sender: NetService, didUpdateTXTRecord data: Data) {
+        let dict = NetService.dictionary(fromTXTRecord: data)
+        let txt: [String: String] = dict.reduce(into: [:]) { acc, kv in
+            let key = kv.key
+            let valueString = String(data: kv.value, encoding: .utf8) ?? ""
+            acc[key] = valueString
+        }
+        upsertDevice(from: sender, addresses: nil, txtRecords: txt, macAddress: nil, vendor: nil)
+    }
+    
+    private func correlateMACAndVendor(for service: NetService, addresses: [String]) {
+        // If we already have a MAC for any address, update and return
+        if let mac = addresses.compactMap({ arpCache[$0] }).first {
+            let vendor = vendorName(forMAC: mac)
+            upsertDevice(from: service, addresses: nil, txtRecords: nil, macAddress: mac, vendor: vendor)
+            return
+        }
+        // Refresh ARP cache and try again
+        let arp = ARPScanner()
+        arp.scanNetwork { [weak self] pairs in
+            guard let self else { return }
+            var cache: [String: String] = [:]
+            for (ip, mac) in pairs { cache[ip] = mac }
+            self.arpCache = cache
+            if let mac = addresses.compactMap({ self.arpCache[$0] }).first {
+                let vendor = self.vendorName(forMAC: mac)
+                DispatchQueue.main.async {
+                    self.upsertDevice(from: service, addresses: nil, txtRecords: nil, macAddress: mac, vendor: vendor)
+                }
+            }
+        }
+    }
+
+    private func vendorName(forMAC mac: String) -> String? {
+        // Normalize: remove separators and uppercase
+        let hex = mac.uppercased().replacingOccurrences(of: ":", with: "").replacingOccurrences(of: "-", with: "")
+        guard hex.count >= 6 else { return nil }
+        let oui = String(hex.prefix(6))
+        // Minimal built-in OUI map (extend as needed)
+        let map: [String: String] = [
+            "0016CB": "Apple, Inc.",
+            "7C6D62": "Apple, Inc.",
+            "B827EB": "Raspberry Pi Foundation",
+            "F4F5E8": "Ubiquiti Networks",
+            "3C5A37": "Hewlett Packard",
+            "F0D1A9": "Cisco Systems",
+            "983B16": "Intel Corporate"
+        ]
+        return map[oui]
+    }
+}
+

@@ -12,6 +12,14 @@
 		C025790E2ECB86BC002044DB /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = C02579092ECB86BC002044DB /* Persistence.swift */; };
 		C025790F2ECB86BC002044DB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C02579052ECB86BC002044DB /* Assets.xcassets */; };
 		C02579122ECB8916002044DB /* DeviceType.swift in Sources */ = {isa = PBXBuildFile; fileRef = C02579102ECB890D002044DB /* DeviceType.swift */; };
+		C0953C7D2ECE376A00A45AB3 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = C0953C7C2ECE376A00A45AB3 /* Info.plist */; };
+		C0953C7F2ECE382600A45AB3 /* DeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0953C7E2ECE382600A45AB3 /* DeviceListView.swift */; };
+		C0953C812ECE3A8E00A45AB3 /* PingSweeper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0953C802ECE3A8E00A45AB3 /* PingSweeper.swift */; };
+		C0953C892ECE437100A45AB3 /* ARPScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0953C882ECE437100A45AB3 /* ARPScanner.swift */; };
+		C0953C8B2ECE51FF00A45AB3 /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0953C8A2ECE51FF00A45AB3 /* ThemeManager.swift */; };
+		C0A2CA182ECD204C000EFCBF /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0A2CA172ECD2043000EFCBF /* ContentView.swift */; };
+		C0A2CA1A2ECD21C2000EFCBF /* NetworkStatusMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0A2CA192ECD21C2000EFCBF /* NetworkStatusMonitor.swift */; };
+		C0A2CA202ECD23E0000EFCBF /* DeviceDiscoveryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0A2CA1F2ECD23E0000EFCBF /* DeviceDiscoveryService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -21,13 +29,33 @@
 		C025790A2ECB86BC002044DB /* NetworkMonitor.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = NetworkMonitor.xcdatamodel; sourceTree = "<group>"; };
 		C02579102ECB890D002044DB /* DeviceType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceType.swift; sourceTree = "<group>"; };
 		C032F9282ECB82D3006F86C3 /* NetworkMonitor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NetworkMonitor.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C0953C7C2ECE376A00A45AB3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		C0953C7E2ECE382600A45AB3 /* DeviceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceListView.swift; sourceTree = "<group>"; };
+		C0953C802ECE3A8E00A45AB3 /* PingSweeper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PingSweeper.swift; sourceTree = "<group>"; };
+		C0953C882ECE437100A45AB3 /* ARPScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARPScanner.swift; sourceTree = "<group>"; };
+		C0953C8A2ECE51FF00A45AB3 /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
+		C0A2CA172ECD2043000EFCBF /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		C0A2CA192ECD21C2000EFCBF /* NetworkStatusMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkStatusMonitor.swift; sourceTree = "<group>"; };
+		C0A2CA1F2ECD23E0000EFCBF /* DeviceDiscoveryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceDiscoveryService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
 		C02579262ECB8ED7002044DB /* Exceptions for "ViewModels" folder in "NetworkMonitor" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				DeviceDetails.swift,
+				DeviceDetailSheet.swift,
+				DeviceDetailView.swift,
+				Models.swift,
 				NetworkCanvasViewModel.swift,
+				NetworkDiscoveryEngine.swift,
+			);
+			target = C032F9272ECB82D3006F86C3 /* NetworkMonitor */;
+		};
+		C0953C8D2ECE588A00A45AB3 /* Exceptions for "Views" folder in "NetworkMonitor" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				RetroComponents/RetroMacStyle.swift,
 			);
 			target = C032F9272ECB82D3006F86C3 /* NetworkMonitor */;
 		};
@@ -41,6 +69,9 @@
 		};
 		C02579152ECB89A8002044DB /* Views */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C0953C8D2ECE588A00A45AB3 /* Exceptions for "Views" folder in "NetworkMonitor" target */,
+			);
 			path = Views;
 			sourceTree = "<group>";
 		};
@@ -78,6 +109,7 @@
 		C02579132ECB894B002044DB /* NetworkMonitorApp */ = {
 			isa = PBXGroup;
 			children = (
+				C0A2CA172ECD2043000EFCBF /* ContentView.swift */,
 				C02579082ECB86BC002044DB /* NetworkMonitorApp.swift */,
 				C02579102ECB890D002044DB /* DeviceType.swift */,
 				C02579072ECB86BC002044DB /* NetworkMonitor.xcdatamodeld */,
@@ -88,6 +120,13 @@
 				C02579162ECB89B2002044DB /* ViewModels */,
 				C02579152ECB89A8002044DB /* Views */,
 				C02579142ECB898E002044DB /* Models */,
+				C0A2CA192ECD21C2000EFCBF /* NetworkStatusMonitor.swift */,
+				C0A2CA1F2ECD23E0000EFCBF /* DeviceDiscoveryService.swift */,
+				C0953C7C2ECE376A00A45AB3 /* Info.plist */,
+				C0953C7E2ECE382600A45AB3 /* DeviceListView.swift */,
+				C0953C802ECE3A8E00A45AB3 /* PingSweeper.swift */,
+				C0953C882ECE437100A45AB3 /* ARPScanner.swift */,
+				C0953C8A2ECE51FF00A45AB3 /* ThemeManager.swift */,
 			);
 			path = NetworkMonitorApp;
 			sourceTree = "<group>";
@@ -169,6 +208,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C0953C7D2ECE376A00A45AB3 /* Info.plist in Resources */,
 				C025790F2ECB86BC002044DB /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -180,10 +220,17 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C0A2CA1A2ECD21C2000EFCBF /* NetworkStatusMonitor.swift in Sources */,
 				C025790C2ECB86BC002044DB /* NetworkMonitor.xcdatamodeld in Sources */,
 				C025790D2ECB86BC002044DB /* NetworkMonitorApp.swift in Sources */,
+				C0953C812ECE3A8E00A45AB3 /* PingSweeper.swift in Sources */,
+				C0953C892ECE437100A45AB3 /* ARPScanner.swift in Sources */,
+				C0953C8B2ECE51FF00A45AB3 /* ThemeManager.swift in Sources */,
+				C0A2CA182ECD204C000EFCBF /* ContentView.swift in Sources */,
+				C0953C7F2ECE382600A45AB3 /* DeviceListView.swift in Sources */,
 				C025790E2ECB86BC002044DB /* Persistence.swift in Sources */,
 				C02579122ECB8916002044DB /* DeviceType.swift in Sources */,
+				C0A2CA202ECD23E0000EFCBF /* DeviceDiscoveryService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -243,7 +290,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.1;
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -300,7 +347,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.1;
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
@@ -316,22 +363,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = YES;
-				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
-				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
-				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
-				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
-				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
-				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
-				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
-				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
-				ENABLE_RESOURCE_ACCESS_USB = NO;
-				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "test app capabilities";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -357,22 +393,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = YES;
-				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
-				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
-				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
-				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
-				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
-				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
-				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
-				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
-				ENABLE_RESOURCE_ACCESS_USB = NO;
-				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "test app capabilities";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

@@ -1,6 +1,6 @@
 import Foundation
 import Network
-import SwiftUI
+import Combine
 
 final class NetworkStatusMonitor: ObservableObject {
     @Published private(set) var isConnected: Bool = false
