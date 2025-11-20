@@ -193,81 +193,160 @@ final class DeviceDiscoveryService: NSObject, ObservableObject {
         let lowerHost = hostName?.lowercased() ?? ""
         let lowerType = type.lowercased()
         let vendorLower = vendor?.lowercased() ?? ""
-        let model = (txtRecords["md"] ?? txtRecords["model"] ?? txtRecords["ty"] ?? txtRecords["fn"] ?? "").trimmingCharacters(in: .whitespaces)
+        
+        // Extract all potential model/name info from TXT records
+        let model = (txtRecords["md"] ?? txtRecords["model"] ?? txtRecords["ty"] ?? "").trimmingCharacters(in: .whitespaces)
+        let friendlyName = txtRecords["fn"]?.trimmingCharacters(in: .whitespaces) ?? ""
+        let productName = txtRecords["product"]?.trimmingCharacters(in: .whitespaces) ?? ""
+        let note = txtRecords["note"]?.trimmingCharacters(in: .whitespaces) ?? ""
 
         // Prefer explicit friendly names from TXT records
-        if let fn = txtRecords["fn"], !fn.isEmpty {
-            return (fn, guessRetroIcon(type: lowerType, vendorLower: vendorLower, nameLower: lowerName, model: model))
+        if !friendlyName.isEmpty {
+            return (friendlyName, guessRetroIcon(type: lowerType, vendorLower: vendorLower, nameLower: lowerName, model: model))
+        }
+
+        // Try product name
+        if !productName.isEmpty {
+            return (productName, guessRetroIcon(type: lowerType, vendorLower: vendorLower, nameLower: lowerName, model: model))
         }
 
         // Printers (IPP/LPR)
-        if lowerType.contains("_ipp._tcp") || lowerType.contains("_printer._tcp") || (txtRecords["ty"]?.isEmpty == false) {
-            let base = model.isEmpty ? "Printer" : model
-            return (vendor.map { "\($0) \(base)" } ?? base, "RetroPrinter")
+        if lowerType.contains("_ipp._tcp") || lowerType.contains("_printer._tcp") || lowerType.contains("_pdl-datastream._tcp") || !model.isEmpty && (txtRecords["ty"] != nil || txtRecords["pdl"] != nil) {
+            let base = model.isEmpty ? (vendor ?? "Network Printer") : model
+            return (base, "RetroPrinter")
         }
 
-        // AirPlay / RAOP
+        // AirPlay / RAOP - extract device name from TXT records
         if lowerType.contains("_airplay._tcp") || lowerType.contains("_raop._tcp") {
-            let base = model.isEmpty ? "AirPlay Device" : model
+            let deviceName = txtRecords["am"]?.trimmingCharacters(in: .whitespaces) ?? 
+                           txtRecords["model"]?.trimmingCharacters(in: .whitespaces) ?? 
+                           model
+            let base = deviceName.isEmpty ? name : deviceName
+            // Distinguish between speakers and TVs
+            if lowerName.contains("tv") || lowerType.contains("appletv") || deviceName.lowercased().contains("tv") {
+                return (base, "RetroTV")
+            }
             return (base, "RetroSpeaker")
         }
 
         // Workstations / Macs
         if lowerType.contains("_workstation._tcp") || lowerName.contains("mac") || lowerHost.contains("mac") || vendorLower.contains("apple") {
+            // Try to get computer name from TXT or hostname
+            let computerName = note.isEmpty ? (hostName?.components(separatedBy: ".").first ?? name) : note
             // Try to infer portable vs desktop from name
-            if lowerName.contains("book") || lowerName.contains("mbp") { return (model.isEmpty ? "Macintosh" : model, "RetroMac") }
-            return (model.isEmpty ? "Macintosh" : model, "RetroMac")
+            if lowerName.contains("book") || lowerName.contains("mbp") || computerName.lowercased().contains("book") { 
+                return (computerName, "RetroMac") 
+            }
+            return (computerName, "RetroMac")
         }
 
         // File servers / NAS
-        if lowerType.contains("_smb._tcp") || lowerType.contains("_afpovertcp._tcp") {
+        if lowerType.contains("_smb._tcp") || lowerType.contains("_afpovertcp._tcp") || lowerType.contains("_nfs._tcp") {
+            let serverName = hostName?.components(separatedBy: ".").first ?? name
             if vendorLower.contains("synology") || vendorLower.contains("qnap") || vendorLower.contains("western digital") {
-                return (model.isEmpty ? "NAS" : model, "RetroDisk")
+                return ("\(vendor ?? "NAS") - \(serverName)", "RetroDisk")
             }
-            return (model.isEmpty ? "File Server" : model, "RetroDisk")
+            return (serverName, "RetroDisk")
         }
 
         // SSH-only devices: often routers/switches/servers
         if lowerType.contains("_ssh._tcp") || lowerType.contains("_sftp-ssh._tcp") {
+            let deviceName = hostName?.components(separatedBy: ".").first ?? name
             if vendorLower.contains("cisco") || lowerName.contains("router") || lowerHost.contains("router") {
-                return ("Router", "RetroRouter")
+                return ("\(vendor ?? "Router") - \(deviceName)", "RetroRouter")
             }
-            return ("Server", "RetroServer")
+            if vendorLower.contains("ubiquiti") || vendorLower.contains("mikrotik") {
+                return ("\(vendor ?? "Network Device") - \(deviceName)", "RetroRouter")
+            }
+            return ("SSH Server - \(deviceName)", "RetroServer")
         }
 
-        // VNC
+        // VNC / Screen Sharing
         if lowerType.contains("_rfb._tcp") {
-            return ("VNC Server", "RetroMac")
+            let deviceName = hostName?.components(separatedBy: ".").first ?? name
+            return ("Screen Sharing - \(deviceName)", "RetroMac")
         }
 
-        // Cameras (common http services with camera keywords)
-        if lowerType.contains("_http._tcp") {
-            if lowerName.contains("cam") || lowerHost.contains("cam") || vendorLower.contains("hikvision") || vendorLower.contains("arlo") || vendorLower.contains("wyze") {
-                return (model.isEmpty ? "IP Camera" : model, "RetroCamera")
+        // HTTP/HTTPS - try to determine device type
+        if lowerType.contains("_http._tcp") || lowerType.contains("_https._tcp") {
+            let deviceName = hostName?.components(separatedBy: ".").first ?? name
+            
+            // Cameras
+            if lowerName.contains("cam") || lowerHost.contains("cam") || vendorLower.contains("hikvision") || vendorLower.contains("arlo") || vendorLower.contains("wyze") || vendorLower.contains("nest") {
+                return (model.isEmpty ? "\(vendor ?? "IP Camera") - \(deviceName)" : model, "RetroCamera")
             }
+            
+            // Web interfaces for routers/switches
+            if vendorLower.contains("cisco") || vendorLower.contains("ubiquiti") || vendorLower.contains("tp-link") || vendorLower.contains("netgear") {
+                return ("\(vendor ?? "Network Device") - \(deviceName)", "RetroRouter")
+            }
+            
+            // NAS web interfaces
+            if vendorLower.contains("synology") || vendorLower.contains("qnap") {
+                return ("\(vendor ?? "NAS") - \(deviceName)", "RetroDisk")
+            }
+            
+            // Generic web server
+            return ("Web Server - \(deviceName)", "RetroServer")
+        }
+
+        // Home automation / IoT
+        if lowerType.contains("_hap._tcp") { // HomeKit Accessory Protocol
+            let accessoryName = txtRecords["name"] ?? name
+            return (accessoryName, "RetroHome")
+        }
+
+        // Media servers
+        if lowerType.contains("_plex._tcp") || lowerType.contains("_plexmediasvr._tcp") {
+            return ("Plex Media Server", "RetroTV")
         }
 
         // Fallbacks by vendor
-        if vendorLower.contains("apple") { return (model.isEmpty ? "Apple Device" : model, "RetroMac") }
-        if vendorLower.contains("hp") || vendorLower.contains("hewlett") || vendorLower.contains("canon") || vendorLower.contains("brother") || vendorLower.contains("epson") { return (model.isEmpty ? "Printer" : model, "RetroPrinter") }
-        if vendorLower.contains("ubiquiti") || vendorLower.contains("tp-link") || vendorLower.contains("netgear") || vendorLower.contains("cisco") { return ("Router", "RetroRouter") }
+        if vendorLower.contains("apple") { 
+            let deviceName = hostName?.components(separatedBy: ".").first ?? name
+            return (model.isEmpty ? "Apple Device - \(deviceName)" : model, "RetroMac") 
+        }
+        if vendorLower.contains("hp") || vendorLower.contains("hewlett") || vendorLower.contains("canon") || vendorLower.contains("brother") || vendorLower.contains("epson") { 
+            return (model.isEmpty ? "\(vendor ?? "Printer")" : model, "RetroPrinter") 
+        }
+        if vendorLower.contains("ubiquiti") || vendorLower.contains("tp-link") || vendorLower.contains("netgear") || vendorLower.contains("cisco") || vendorLower.contains("mikrotik") { 
+            let deviceName = hostName?.components(separatedBy: ".").first ?? name
+            return ("\(vendor ?? "Network Device") - \(deviceName)", "RetroRouter") 
+        }
 
-        // Last resort: use service type (without dots) as label
-        let cleanedType = type.replacingOccurrences(of: ".", with: "").replacingOccurrences(of: "_", with: "")
-        let label = cleanedType.isEmpty ? name : cleanedType
+        // Last resort: try to make the service type readable
+        let cleanedType = type.replacingOccurrences(of: ".", with: "")
+            .replacingOccurrences(of: "_tcp", with: "")
+            .replacingOccurrences(of: "_udp", with: "")
+            .replacingOccurrences(of: "_", with: " ")
+            .trimmingCharacters(in: .whitespaces)
+            .capitalized
+        
+        let deviceName = hostName?.components(separatedBy: ".").first ?? name
+        let label = cleanedType.isEmpty ? deviceName : "\(cleanedType) - \(deviceName)"
         return (label, guessRetroIcon(type: lowerType, vendorLower: vendorLower, nameLower: lowerName, model: model))
     }
 
     private func guessRetroIcon(type: String, vendorLower: String, nameLower: String, model: String) -> String {
-        if type.contains("_printer._tcp") || type.contains("_ipp._tcp") { return "RetroPrinter" }
-        if type.contains("_airplay._tcp") || type.contains("_raop._tcp") { return "RetroSpeaker" }
+        if type.contains("_printer._tcp") || type.contains("_ipp._tcp") || type.contains("_pdl-datastream._tcp") { return "RetroPrinter" }
+        if type.contains("_airplay._tcp") || type.contains("_raop._tcp") {
+            if nameLower.contains("tv") || model.lowercased().contains("tv") { return "RetroTV" }
+            return "RetroSpeaker"
+        }
         if type.contains("_workstation._tcp") { return "RetroMac" }
-        if type.contains("_smb._tcp") || type.contains("_afpovertcp._tcp") { return "RetroDisk" }
+        if type.contains("_smb._tcp") || type.contains("_afpovertcp._tcp") || type.contains("_nfs._tcp") { return "RetroDisk" }
         if type.contains("_ssh._tcp") || type.contains("_sftp-ssh._tcp") { return "RetroServer" }
         if type.contains("_rfb._tcp") { return "RetroMac" }
-        if type.contains("_http._tcp") && (nameLower.contains("cam") || vendorLower.contains("hikvision") || vendorLower.contains("arlo") || vendorLower.contains("wyze")) { return "RetroCamera" }
+        if type.contains("_http._tcp") || type.contains("_https._tcp") {
+            if nameLower.contains("cam") || vendorLower.contains("hikvision") || vendorLower.contains("arlo") || vendorLower.contains("wyze") { return "RetroCamera" }
+            if vendorLower.contains("synology") || vendorLower.contains("qnap") { return "RetroDisk" }
+            return "RetroServer"
+        }
+        if type.contains("_hap._tcp") { return "RetroHome" }
+        if type.contains("_plex._tcp") || type.contains("_plexmediasvr._tcp") { return "RetroTV" }
         if vendorLower.contains("apple") { return "RetroMac" }
-        if vendorLower.contains("cisco") || vendorLower.contains("ubiquiti") || vendorLower.contains("netgear") || vendorLower.contains("tp-link") { return "RetroRouter" }
+        if vendorLower.contains("cisco") || vendorLower.contains("ubiquiti") || vendorLower.contains("netgear") || vendorLower.contains("tp-link") || vendorLower.contains("mikrotik") { return "RetroRouter" }
+        if vendorLower.contains("synology") || vendorLower.contains("qnap") { return "RetroDisk" }
         return "RetroUnknown"
     }
 }
@@ -420,15 +499,52 @@ extension DeviceDiscoveryService: NetServiceDelegate {
         let hex = mac.uppercased().replacingOccurrences(of: ":", with: "").replacingOccurrences(of: "-", with: "")
         guard hex.count >= 6 else { return nil }
         let oui = String(hex.prefix(6))
-        // Minimal built-in OUI map (extend as needed)
+        // Extended built-in OUI map
         let map: [String: String] = [
-            "0016CB": "Apple, Inc.",
-            "7C6D62": "Apple, Inc.",
+            // Apple
+            "0016CB": "Apple",
+            "001451": "Apple",
+            "001CB3": "Apple",
+            "002332": "Apple",
+            "002436": "Apple",
+            "002500": "Apple",
+            "00254B": "Apple",
+            "3451C9": "Apple",
+            "7C6D62": "Apple",
+            "A4C361": "Apple",
+            "B853AC": "Apple",
+            "BCEC5D": "Apple",
+            "F0DCE2": "Apple",
+            
+            // Networking Equipment
             "B827EB": "Raspberry Pi Foundation",
-            "F4F5E8": "Ubiquiti Networks",
+            "DCA632": "Raspberry Pi Foundation",
+            "E45F01": "Raspberry Pi Foundation",
+            "F4F5E8": "Ubiquiti",
+            "FC9FB6": "Ubiquiti",
+            "80EA96": "Ubiquiti",
+            "F0D1A9": "Cisco",
+            "001E14": "Cisco",
+            "0019E8": "Cisco",
+            "D4E8B2": "Netgear",
+            "A0040A": "Netgear",
+            "10DA43": "TP-Link",
+            "50C7BF": "TP-Link",
+            
+            // Printers
             "3C5A37": "Hewlett Packard",
-            "F0D1A9": "Cisco Systems",
-            "983B16": "Intel Corporate"
+            "A8667F": "Hewlett Packard",
+            "00236C": "Canon",
+            "002583": "Brother",
+            "008004": "Epson",
+            
+            // Other
+            "983B16": "Intel",
+            "000C29": "VMware",
+            "0050F2": "Microsoft",
+            "00155D": "Microsoft",
+            "18B169": "Synology",
+            "001132": "Synology"
         ]
         return map[oui]
     }

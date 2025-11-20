@@ -93,6 +93,114 @@ struct DeviceListView: View {
         ))
     }
     
+    // Helper function to get modern SF Symbol for device
+    private func modernIcon(for device: DiscoveredDevice) -> String {
+        let lowerType = device.type.lowercased()
+        let lowerName = device.name.lowercased()
+        let vendorLower = device.vendor?.lowercased() ?? ""
+        
+        // Printers
+        if lowerType.contains("_printer._tcp") || lowerType.contains("_ipp._tcp") || lowerType.contains("_pdl-datastream._tcp") {
+            return "printer.fill"
+        }
+        
+        // AirPlay devices
+        if lowerType.contains("_airplay._tcp") || lowerType.contains("_raop._tcp") {
+            if lowerName.contains("tv") || device.displayName.lowercased().contains("tv") {
+                return "tv.fill"
+            }
+            return "hifispeaker.fill"
+        }
+        
+        // Workstations / Computers
+        if lowerType.contains("_workstation._tcp") || lowerName.contains("mac") || vendorLower.contains("apple") {
+            if lowerName.contains("book") || lowerName.contains("mbp") || device.displayName.lowercased().contains("book") {
+                return "laptopcomputer"
+            }
+            return "desktopcomputer"
+        }
+        
+        // File servers / NAS
+        if lowerType.contains("_smb._tcp") || lowerType.contains("_afpovertcp._tcp") || lowerType.contains("_nfs._tcp") {
+            if vendorLower.contains("synology") || vendorLower.contains("qnap") {
+                return "externaldrive.fill.badge.timemachine"
+            }
+            return "server.rack"
+        }
+        
+        // SSH servers
+        if lowerType.contains("_ssh._tcp") || lowerType.contains("_sftp-ssh._tcp") {
+            if vendorLower.contains("cisco") || vendorLower.contains("ubiquiti") || vendorLower.contains("netgear") || vendorLower.contains("tp-link") {
+                return "wifi.router.fill"
+            }
+            return "terminal.fill"
+        }
+        
+        // VNC / Screen Sharing
+        if lowerType.contains("_rfb._tcp") {
+            return "display"
+        }
+        
+        // HTTP/HTTPS
+        if lowerType.contains("_http._tcp") || lowerType.contains("_https._tcp") {
+            // Cameras
+            if lowerName.contains("cam") || vendorLower.contains("hikvision") || vendorLower.contains("arlo") || vendorLower.contains("wyze") || vendorLower.contains("nest") {
+                return "video.fill"
+            }
+            // NAS web interfaces
+            if vendorLower.contains("synology") || vendorLower.contains("qnap") {
+                return "externaldrive.fill.badge.timemachine"
+            }
+            // Routers
+            if vendorLower.contains("cisco") || vendorLower.contains("ubiquiti") || vendorLower.contains("tp-link") || vendorLower.contains("netgear") {
+                return "wifi.router.fill"
+            }
+            return "globe"
+        }
+        
+        // HomeKit
+        if lowerType.contains("_hap._tcp") {
+            return "house.fill"
+        }
+        
+        // Media servers
+        if lowerType.contains("_plex._tcp") || lowerType.contains("_plexmediasvr._tcp") {
+            return "play.rectangle.on.rectangle.fill"
+        }
+        
+        // Vendor-based fallbacks
+        if vendorLower.contains("apple") {
+            return "applelogo"
+        }
+        if vendorLower.contains("cisco") || vendorLower.contains("ubiquiti") || vendorLower.contains("netgear") || vendorLower.contains("tp-link") {
+            return "wifi.router.fill"
+        }
+        if vendorLower.contains("hp") || vendorLower.contains("hewlett") || vendorLower.contains("canon") || vendorLower.contains("brother") || vendorLower.contains("epson") {
+            return "printer.fill"
+        }
+        
+        // Default
+        return "network"
+    }
+    
+    // Helper function to get icon color
+    private func iconColor(for device: DiscoveredDevice) -> Color {
+        let lowerType = device.type.lowercased()
+        let vendorLower = device.vendor?.lowercased() ?? ""
+        
+        if lowerType.contains("_printer._tcp") || lowerType.contains("_ipp._tcp") { return .cyan }
+        if lowerType.contains("_airplay._tcp") || lowerType.contains("_raop._tcp") { return .purple }
+        if lowerType.contains("_workstation._tcp") || vendorLower.contains("apple") { return .blue }
+        if lowerType.contains("_smb._tcp") || lowerType.contains("_afpovertcp._tcp") { return .orange }
+        if lowerType.contains("_ssh._tcp") || lowerType.contains("_sftp-ssh._tcp") { return .green }
+        if lowerType.contains("_http._tcp") || lowerType.contains("_https._tcp") { return .indigo }
+        if lowerType.contains("_hap._tcp") { return .pink }
+        if vendorLower.contains("cisco") || vendorLower.contains("ubiquiti") { return .teal }
+        
+        return .gray
+    }
+
+    
     @ViewBuilder
     private func deviceRow(for device: DiscoveredDevice) -> some View {
         if theme.style == .retro1986 {
@@ -110,13 +218,17 @@ struct DeviceListView: View {
                 .frame(width: 24, height: 24)
 
             VStack(alignment: .leading, spacing: 2) {
-                HStack {
+                HStack(spacing: 6) {
                     Text(device.displayName)
                         .font(.chicago(size: 14))
-                    Text(device.type)
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
+                    
+                    if let vendor = device.vendor {
+                        Text(vendor)
+                            .font(.system(size: 9))
+                            .foregroundStyle(.secondary)
+                    }
                 }
+                
                 if let host = device.hostName, let port = device.port {
                     Text("\(host):\(port)")
                         .font(.geneva(size: 11))
@@ -124,11 +236,21 @@ struct DeviceListView: View {
                     Text(host)
                         .font(.geneva(size: 11))
                 }
-                if !device.addresses.isEmpty {
-                    Text(device.addresses.joined(separator: ", "))
-                        .font(.system(size: 9, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
+                
+                HStack(spacing: 8) {
+                    if !device.addresses.isEmpty {
+                        Text(device.addresses.first ?? "")
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    
+                    if let mac = device.macAddress {
+                        Text(mac)
+                            .font(.system(size: 8, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                 }
             }
         }
@@ -136,30 +258,74 @@ struct DeviceListView: View {
     }
     
     private func modernDeviceRow(for device: DiscoveredDevice) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "network")
-                .foregroundStyle(.tint)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(device.displayName)
-                    .font(.headline)
-                if let host = device.hostName {
+        HStack(spacing: 12) {
+            // Modern glossy icon
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(iconColor(for: device).gradient)
+                    .frame(width: 44, height: 44)
+                    .shadow(color: iconColor(for: device).opacity(0.3), radius: 4, x: 0, y: 2)
+                
+                Image(systemName: modernIcon(for: device))
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .symbolRenderingMode(.hierarchical)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(device.displayName)
+                        .font(.headline)
+                        .lineLimit(1)
+                    
+                    if let vendor = device.vendor {
+                        Text(vendor)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.secondary.opacity(0.1))
+                            .clipShape(Capsule())
+                    }
+                }
+                
+                if let host = device.hostName, host != device.displayName {
                     Text(host)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                }
-                if !device.addresses.isEmpty {
-                    Text(device.addresses.joined(separator: ", "))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
+                
+                HStack(spacing: 8) {
+                    if !device.addresses.isEmpty {
+                        Label(device.addresses.first ?? "", systemImage: "network")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    
+                    if let port = device.port {
+                        Label(":\(port)", systemImage: "globe")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    if let mac = device.macAddress {
+                        Label(mac, systemImage: "person.crop.circle.badge.checkmark")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
             }
+            
             Spacer()
-            if let port = device.port {
-                Text(":\(port)")
-                    .foregroundStyle(.secondary)
-            }
+            
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
         }
+        .padding(.vertical, 4)
     }
     
     // MARK: - Toolbar Items
