@@ -19,7 +19,7 @@ final class PingSweeper {
         let maskHost = UInt32(bigEndian: iface.netmask.s_addr)
         let network = ipHost & maskHost
         let broadcast = network | ~maskHost
-        var start = network &+ 1
+        let start = network &+ 1
         var end = broadcast &- 1
 
         // Cap scan size to avoid huge subnets

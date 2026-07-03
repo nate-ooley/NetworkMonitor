@@ -139,22 +139,7 @@ struct ContentView: View {
 
     @MainActor
     private func connectionTypeDescription() -> String {
-        // Adjust this mapping to your NetworkStatusMonitor's real API.
-        // We avoid generic inference issues by explicitly typing the dictionary as [String: Any].
-        let mirror = Mirror(reflecting: networkMonitor)
-        var children: [String: Any] = [:]
-        for child in mirror.children {
-            if let label = child.label {
-                children[label] = child.value
-            }
-        }
-
-        if let type = children["connectionType"] as? String { return type }
-        if let type = children["currentInterface"] as? String { return type }
-        if let isWiFi = children["isOnWiFi"] as? Bool, isWiFi { return "Wi‑Fi" }
-        if let isCell = children["isOnCellular"] as? Bool, isCell { return "Cellular" }
-
-        return networkMonitor.isConnected ? "Unknown" : "None"
+        networkMonitor.isConnected ? networkMonitor.interfaceType : "None"
     }
 
     private func colorForMethod(_ method: String?) -> Color {

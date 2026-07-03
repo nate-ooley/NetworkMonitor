@@ -128,7 +128,7 @@ final class DeviceDiscoveryService: NSObject, ObservableObject {
 
         let keyMatch: (DiscoveredDevice) -> Bool = { $0.name == service.name && $0.type == service.type && $0.domain == service.domain }
         if let idx = devices.firstIndex(where: keyMatch) {
-            var existing = devices[idx]
+            let existing = devices[idx]
             // Merge/override fields
             if !incomingAddrs.isEmpty { existing.addresses = incomingAddrs }
             if let tr = txtRecords { existing.txtRecords = tr }

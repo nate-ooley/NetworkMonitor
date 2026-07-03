@@ -11,7 +11,6 @@
 		C025790D2ECB86BC002044DB /* NetworkMonitorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C02579082ECB86BC002044DB /* NetworkMonitorApp.swift */; };
 		C025790E2ECB86BC002044DB /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = C02579092ECB86BC002044DB /* Persistence.swift */; };
 		C025790F2ECB86BC002044DB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C02579052ECB86BC002044DB /* Assets.xcassets */; };
-		C02579122ECB8916002044DB /* DeviceType.swift in Sources */ = {isa = PBXBuildFile; fileRef = C02579102ECB890D002044DB /* DeviceType.swift */; };
 		C0953C7D2ECE376A00A45AB3 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = C0953C7C2ECE376A00A45AB3 /* Info.plist */; };
 		C0953C7F2ECE382600A45AB3 /* DeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0953C7E2ECE382600A45AB3 /* DeviceListView.swift */; };
 		C0953C812ECE3A8E00A45AB3 /* PingSweeper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0953C802ECE3A8E00A45AB3 /* PingSweeper.swift */; };
@@ -27,7 +26,6 @@
 		C02579082ECB86BC002044DB /* NetworkMonitorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitorApp.swift; sourceTree = "<group>"; };
 		C02579092ECB86BC002044DB /* Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence.swift; sourceTree = "<group>"; };
 		C025790A2ECB86BC002044DB /* NetworkMonitor.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = NetworkMonitor.xcdatamodel; sourceTree = "<group>"; };
-		C02579102ECB890D002044DB /* DeviceType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceType.swift; sourceTree = "<group>"; };
 		C032F9282ECB82D3006F86C3 /* NetworkMonitor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NetworkMonitor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C0953C7C2ECE376A00A45AB3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		C0953C7E2ECE382600A45AB3 /* DeviceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceListView.swift; sourceTree = "<group>"; };
@@ -112,7 +110,6 @@
 			children = (
 				C0A2CA172ECD2043000EFCBF /* ContentView.swift */,
 				C02579082ECB86BC002044DB /* NetworkMonitorApp.swift */,
-				C02579102ECB890D002044DB /* DeviceType.swift */,
 				C02579072ECB86BC002044DB /* NetworkMonitor.xcdatamodeld */,
 				C02579092ECB86BC002044DB /* Persistence.swift */,
 				C02579052ECB86BC002044DB /* Assets.xcassets */,
@@ -230,7 +227,6 @@
 				C0A2CA182ECD204C000EFCBF /* ContentView.swift in Sources */,
 				C0953C7F2ECE382600A45AB3 /* DeviceListView.swift in Sources */,
 				C025790E2ECB86BC002044DB /* Persistence.swift in Sources */,
-				C02579122ECB8916002044DB /* DeviceType.swift in Sources */,
 				C0A2CA202ECD23E0000EFCBF /* DeviceDiscoveryService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
